@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
@@ -244,9 +245,12 @@ def health_check():
         'models_loaded': len(models)
     })
 
+# Load models at module level (works for both gunicorn and direct run)
+load_models()
+
 if __name__ == '__main__':
-    load_models()
     print("\nStarting Flask server...")
-    print("Backend running at: http://127.0.0.1:5000")
+    port = int(os.environ.get('PORT', 5000))
+    print(f"Backend running at: http://0.0.0.0:{port}")
     print("\nPress CTRL+C to quit\n")
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=port)
