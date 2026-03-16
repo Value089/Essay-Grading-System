@@ -9,90 +9,56 @@ function App() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('grade');
   const [backendStatus, setBackendStatus] = useState('checking'); // 'checking', 'connected', 'disconnected'
+  const apiBaseUrl = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 
   const essayDescriptions = {
-    '1': 'Source Dependent Responses (0-12 points)',
-    '2': 'Persuasive/Narrative Writing (0-6 points)',
-    '3': 'Source Dependent Responses (0-3 points)',
-    '4': 'Source Dependent Responses (0-3 points)',
-    '5': 'Source Dependent Responses (0-4 points)',
-    '6': 'Source Dependent Responses (0-4 points)',
-    '7': 'Persuasive/Narrative Writing (0-30 points)',
-    '8': 'Persuasive/Narrative Writing (0-60 points)',
+    '1': 'Reading-Based Essay (0-12 points)',
+    '2': 'Short Opinion Essay (0-6 points)',
+    '3': 'Short Reading Answer (0-3 points)',
+    '4': 'Small Explanation Essay (0-3 points)',
+    '5': 'Compare Two Ideas Essay (0-4 points)',
+    '6': 'Short Analysis Essay (0-4 points)',
+    '7': 'Personal Story Essay (0-30 points)',
+    '8': 'Big Opinion Essay (0-60 points)',
   };
 
   // Check backend health on component mount
   useEffect(() => {
     const checkBackendHealth = async () => {
       try {
-        const urls = ['/api/health', 'http://localhost:5000/api/health', 'http://127.0.0.1:5000/api/health'];
-        let connected = false;
-        
-        for (const url of urls) {
-          try {
-            const response = await fetch(url);
-            if (response.ok) {
-              const data = await response.json();
-              if (data.status === 'healthy') {
-                setBackendStatus('connected');
-                connected = true;
-                break;
-              }
-            }
-          } catch (err) {
-            continue;
-          }
-        }
-        
-        if (!connected) {
-          setBackendStatus('disconnected');
-        }
+        const healthUrl = apiBaseUrl ? `${apiBaseUrl}/api/health` : '/api/health';
+        const response = await fetch(healthUrl);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+        const data = await response.json();
+        if (data.status === 'healthy') setBackendStatus('connected');
+        else setBackendStatus('disconnected');
       } catch (err) {
         setBackendStatus('disconnected');
       }
     };
 
     checkBackendHealth();
-  }, []);
+  }, [apiBaseUrl]);
 
   const gradeEssay = async () => {
   setLoading(true);
   setError(null);
   
   try {
-    // Try proxy first, then fallback to direct URL
-    const urls = ['/api/grade', 'http://localhost:5000/api/grade', 'http://127.0.0.1:5000/api/grade'];
-    let response = null;
-    let lastError = null;
-    
-    for (const url of urls) {
-      try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            essay: essay,
-            essay_set: parseInt(essaySet)
-          })
-        });
-        
-        if (response.ok) {
-          break; // Success, exit loop
-        } else {
-          lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-      } catch (err) {
-        lastError = err;
-        console.log(`Failed to connect to ${url}:`, err.message);
-        continue; // Try next URL
-      }
-    }
+    const gradeUrl = apiBaseUrl ? `${apiBaseUrl}/api/grade` : '/api/grade';
+    const response = await fetch(gradeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        essay: essay,
+        essay_set: parseInt(essaySet)
+      })
+    });
 
-    if (!response || !response.ok) {
-      throw lastError || new Error('All connection attempts failed');
-    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 
     const data = await response.json();
     
@@ -115,7 +81,7 @@ function App() {
     setResult(feedback);
   } catch (err) {
     const errorMessage = err.message.includes('fetch') 
-      ? 'Cannot connect to backend server. Please make sure it is running on port 5000.'
+      ? 'Cannot connect to backend server. Please check your backend URL and CORS settings.'
       : `Failed to grade essay: ${err.message}`;
     setError(errorMessage);
     console.error('Error:', err);
@@ -257,7 +223,7 @@ function App() {
                       <p className="text-red-700 font-semibold">Backend Server Not Running</p>
                     </div>
                     <p className="text-red-600 text-sm">
-                      Please start the backend server by running: <code className="bg-red-100 px-2 py-1 rounded">python backend/app.py</code>
+                      Please check your backend deployment and ensure the frontend is configured with <code className="bg-red-100 px-2 py-1 rounded">REACT_APP_API_URL</code>.
                     </p>
                   </div>
                 )}
