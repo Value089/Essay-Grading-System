@@ -33,11 +33,7 @@ frontend/.env
 *.swo
 *~
 
-# Models (optional - comment out if you want to track models)
-backend/models/*.pkl
-backend/vectorizers/*.pkl
-
-# Data
+# Data (keep large/raw datasets out of git)
 backend/data/*.xlsx
 backend/data/*.csv
 

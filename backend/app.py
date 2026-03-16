@@ -12,6 +12,11 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+# Resolve paths relative to this file (works on Render/gunicorn too)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODELS_DIR = os.path.join(BASE_DIR, 'models')
+VECTORIZERS_DIR = os.path.join(BASE_DIR, 'vectorizers')
+
 # Download required NLTK data
 try:
     nltk.download('punkt', quiet=True)
@@ -120,8 +125,8 @@ def load_models():
     
     for essay_set in range(1, 9):
         try:
-            model_path = f'models/model_set{essay_set}.pkl'
-            vectorizer_path = f'vectorizers/vectorizer_set{essay_set}.pkl'
+            model_path = os.path.join(MODELS_DIR, f'model_set{essay_set}.pkl')
+            vectorizer_path = os.path.join(VECTORIZERS_DIR, f'vectorizer_set{essay_set}.pkl')
             
             with open(model_path, 'rb') as f:
                 models[essay_set] = pickle.load(f)
@@ -154,7 +159,10 @@ def grade_essay():
         
         # Check if model exists
         if essay_set not in models or essay_set not in vectorizers:
-            return jsonify({'error': f'Model for essay set {essay_set} not loaded'}), 500
+            return jsonify({
+                'error': f'Model for essay set {essay_set} not loaded',
+                'hint': 'Deploy the trained .pkl files to backend/models and backend/vectorizers, then redeploy the backend.'
+            }), 503
         
         # Preprocess essay
         processed_essay = preprocess_text(essay)
@@ -240,9 +248,11 @@ def generate_feedback(features, score, essay_set):
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
+    missing_models = [s for s in range(1, 9) if s not in models or s not in vectorizers]
     return jsonify({
         'status': 'healthy',
-        'models_loaded': len(models)
+        'models_loaded': len(models),
+        'missing_essay_sets': missing_models
     })
 
 # Load models at module level (works for both gunicorn and direct run)
